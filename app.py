@@ -4,7 +4,7 @@ import numpy as np
 import plotly.graph_objects as go
 from datetime import datetime
 
-# Estética Orbe
+# Configuración visual
 st.set_page_config(page_title="Orbe", layout="centered")
 
 st.markdown("""
@@ -13,86 +13,86 @@ st.markdown("""
     .stButton>button { 
         background-color: #121212; border: 1px solid #333; color: #E0E0E0;
         border-radius: 50%; width: 75px; height: 75px; font-size: 24px;
-        transition: all 0.3s ease;
+        display: block; margin: auto;
     }
-    .stButton>button:hover { border-color: #70f3ff; }
+    .stButton>button:active { border-color: #70f3ff; }
     </style>
     """, unsafe_allow_html=True)
 
-# Inicializar el contenedor de estrellas
-if 'cosmos_df' not in st.session_state:
-    st.session_state.cosmos_df = pd.DataFrame(columns=['x', 'y', 'categoria', 'tamaño', 'simbolo', 'color'])
+# Inicializar memoria temporal
+if 'cosmos' not in st.session_state:
+    st.session_state.cosmos = []
 
-def registrar_estrella(cat, color_hex, simb):
-    n = len(st.session_state.cosmos_df)
-    # Lógica de Espiral Áurea para el posicionamiento
+def registrar(cat, color, simb):
+    n = len(st.session_state.cosmos)
+    # Lógica de Espiral
     angulo = n * (np.pi * (3 - np.sqrt(5)))
     radio = np.sqrt(n + 1) * 3
     
-    nueva = pd.DataFrame({
-        'x': [radio * np.cos(angulo)],
-        'y': [radio * np.sin(angulo)],
-        'categoria': [cat],
-        'tamaño': [25],
-        'simbolo': [simb],
-        'color': [color_hex]
-    })
-    st.session_state.cosmos_df = pd.concat([st.session_state.cosmos_df, nueva], ignore_index=True)
+    nueva_estrella = {
+        'x': radio * np.cos(angulo),
+        'y': radio * np.sin(angulo),
+        'cat': cat,
+        'color': color,
+        'simb': simb
+    }
+    st.session_state.cosmos.append(nueva_estrella)
 
-st.markdown("<h1 style='text-align: center; font-family: serif; letter-spacing: 8px;'>O R B E</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; font-family: serif; letter-spacing: 10px;'>O R B E</h1>", unsafe_allow_html=True)
 
-# Panel de botones
-col1, col2, col3 = st.columns(3)
-with col1:
-    if st.button("🌀"): registrar_estrella("Físico", "#4fd1c5", "hexagram")
-    st.caption("FÍSICO")
-with col2:
-    if st.button("💠"): registrar_estrella("Intelectual", "#d4af37", "diamond-tall")
-    st.caption("INTELECTUAL")
-with col3:
-    if st.button("🕸️"): registrar_estrella("Ritual", "#9f7aea", "star-entrance")
-    st.caption("RITUAL")
+# Botones en horizontal para iPhone
+c1, c2, c3 = st.columns(3)
+with c1:
+    if st.button("🌀"): registrar("Físico", "#4fd1c5", "hexagram")
+    st.markdown("<p style='text-align:center; font-size:10px;'>FÍSICO</p>", unsafe_allow_html=True)
+with c2:
+    if st.button("💠"): registrar("Intelectual", "#d4af37", "diamond-tall")
+    st.markdown("<p style='text-align:center; font-size:10px;'>INTELECTUAL</p>", unsafe_allow_html=True)
+with c3:
+    if st.button("🕸️"): registrar("Ritual", "#9f7aea", "star-entrance")
+    st.markdown("<p style='text-align:center; font-size:10px;'>RITUAL</p>", unsafe_allow_html=True)
 
-# --- RENDERIZADO DEL COSMOS ---
-# Solo intentamos dibujar si el DataFrame NO está vacío
-if not st.session_state.cosmos_df.empty:
+# --- VISUALIZACIÓN ---
+if len(st.session_state.cosmos) > 0:
+    # Convertimos la lista de dicts a DataFrame solo para graficar
+    df = pd.DataFrame(st.session_state.cosmos)
+    
     fig = go.Figure()
 
-    # Añadir líneas de conexión (filamentos)
-    if len(st.session_state.cosmos_df) > 1:
+    # Filamentos (Solo si hay más de una estrella)
+    if len(df) > 1:
         fig.add_trace(go.Scatter(
-            x=st.session_state.cosmos_df['x'], 
-            y=st.session_state.cosmos_df['y'],
+            x=df['x'], y=df['y'],
             mode='lines',
-            line=dict(color='rgba(255, 255, 255, 0.15)', width=1, shape='spline'),
+            line=dict(color='rgba(255,255,255,0.1)', width=1, shape='spline'),
             hoverinfo='none'
         ))
 
-    # Añadir las estrellas
+    # Estrellas Grabadas
     fig.add_trace(go.Scatter(
-        x=st.session_state.cosmos_df['x'], 
-        y=st.session_state.cosmos_df['y'],
+        x=df['x'], y=df['y'],
         mode='markers',
         marker=dict(
-            size=st.session_state.cosmos_df['tamaño'],
-            color=st.session_state.cosmos_df['color'],
-            symbol=st.session_state.cosmos_df['simbolo'],
-            line=dict(width=1, color='rgba(255,255,255,0.6)')
+            size=22,
+            color=df['color'],
+            symbol=df['simb'],
+            line=dict(width=1, color='rgba(255,255,255,0.5)')
         ),
-        text=st.session_state.cosmos_df['categoria']
+        hoverinfo='text',
+        text=df['cat']
     ))
 
     fig.update_layout(
         showlegend=False,
         plot_bgcolor='black',
         paper_bgcolor='black',
-        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-        margin=dict(l=10, r=10, t=10, b=10),
-        height=450
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-20, 20]),
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-20, 20]),
+        margin=dict(l=0, r=0, t=0, b=0),
+        height=400
     )
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 else:
-    st.info("El orbe está esperando su primera luz. Presiona un botón para comenzar.")
+    st.markdown("<br><p style='text-align: center; opacity: 0.5;'>El orbe está en silencio.<br>Presiona un origen para comenzar.</p>", unsafe_allow_html=True)
 
-st.markdown(f"<p style='text-align: center; opacity: 0.3; font-size: 10px;'>{len(st.session_state.cosmos_df)} REGISTROS EN ESTA SESIÓN</p>", unsafe_allow_html=True)
+st.markdown(f"<p style='text-align: center; font-size: 10px; opacity: 0.3;'>{len(st.session_state.cosmos)} LUCES EN MEMORIA</p>", unsafe_allow_html=True)
