@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from github import Github
 import io
 
-# --- CONFIGURACIÓN VISUAL ---
+# --- ESTÉTICA ---
 st.set_page_config(page_title="Orbe", layout="centered")
 st.markdown("""
     <style>
@@ -15,53 +15,63 @@ st.markdown("""
         border-radius: 50%; width: 80px; height: 80px; font-size: 26px;
         display: block; margin: auto;
     }
-    .label { text-align: center; font-size: 10px; opacity: 0.5; letter-spacing: 2px; }
+    .label { text-align: center; font-size: 10px; opacity: 0.5; letter-spacing: 2px; margin-top: 5px; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- GESTIÓN DE DATOS (GITHUB) ---
-def cargar_universo():
-    if "GITHUB_TOKEN" not in st.secrets:
-        return pd.DataFrame(columns=['x', 'y', 'cat', 'color', 'simb'])
+# --- MEMORIA ETERNA ---
+def gestionar_github():
     try:
         g = Github(st.secrets["GITHUB_TOKEN"])
-        repo = g.get_repo(st.secrets["REPO_NAME"])
-        file = repo.get_contents("estrellas.csv")
-        return pd.read_csv(io.StringIO(file.decoded_content.decode()))
+        return g.get_repo(st.secrets["REPO_NAME"])
     except:
-        return pd.DataFrame(columns=['x', 'y', 'cat', 'color', 'simb'])
+        return None
+
+def cargar_universo():
+    repo = gestionar_github()
+    if repo:
+        try:
+            file = repo.get_contents("estrellas.csv")
+            return pd.read_csv(io.StringIO(file.decoded_content.decode()))
+        except:
+            # Si el archivo no existe, devolvemos un DataFrame limpio
+            return pd.DataFrame(columns=['x', 'y', 'cat', 'color', 'simb'])
+    return pd.DataFrame(columns=['x', 'y', 'cat', 'color', 'simb'])
 
 def guardar_universo(df):
-    try:
-        g = Github(st.secrets["GITHUB_TOKEN"])
-        repo = g.get_repo(st.secrets["REPO_NAME"])
+    repo = gestionar_github()
+    if repo:
         csv_content = df.to_csv(index=False)
         try:
             file = repo.get_contents("estrellas.csv")
-            repo.update_file("estrellas.csv", "Sincronización Orbe", csv_content, file.sha)
+            repo.update_file("estrellas.csv", "Sincronización estelar", csv_content, file.sha)
         except:
-            repo.create_file("estrellas.csv", "Creación Orbe", csv_content)
-    except:
-        pass # No mostrar error si falla la red
+            repo.create_file("estrellas.csv", "Nacimiento del Orbe", csv_content)
 
-# Inicializar sesión
+# Inicializar
 if 'cosmos' not in st.session_state:
     st.session_state.cosmos = cargar_universo()
 
 def registrar(cat, color, simb):
+    # Lógica de espiral
     n = len(st.session_state.cosmos)
     phi = (1 + np.sqrt(5)) / 2
     angulo = n * (2 * np.pi / (phi**2))
     radio = np.sqrt(n + 1) * 3
     
-    nueva = pd.DataFrame({'x':[radio*np.cos(angulo)], 'y':[radio*np.sin(angulo)], 
-                          'cat':[cat], 'color':[color], 'simb':[simb]})
+    nueva = pd.DataFrame({
+        'x': [radio * np.cos(angulo)],
+        'y': [radio * np.sin(angulo)],
+        'cat': [cat],
+        'color': [color],
+        'simb': [simb]
+    })
     
     st.session_state.cosmos = pd.concat([st.session_state.cosmos, nueva], ignore_index=True)
     guardar_universo(st.session_state.cosmos)
 
 # --- INTERFAZ ---
-st.markdown("<h1 style='text-align: center; letter-spacing: 15px; margin-bottom: 40px;'>O R B E</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; letter-spacing: 15px;'>O R B E</h1>", unsafe_allow_html=True)
 
 c1, c2, c3 = st.columns(3)
 with c1:
@@ -74,21 +84,31 @@ with c3:
     if st.button("✨"): registrar("Ritual", "#9f7aea", "star-entrance")
     st.markdown("<p class='label'>RITUAL</p>", unsafe_allow_html=True)
 
-# --- MAPA ESTELAR ---
+# --- VISUALIZACIÓN SEGURA ---
 df = st.session_state.cosmos
-if not df.empty:
+
+# Solo intentamos graficar si el DataFrame tiene datos reales y no está vacío
+if isinstance(df, pd.DataFrame) and not df.empty and len(df) > 0:
     fig = go.Figure()
     
-    # Filamentos
+    # Líneas
     if len(df) > 1:
-        fig.add_trace(go.Scatter(x=df.x, y=df.y, mode='lines', 
-                                 line=dict(color='rgba(255,255,255,0.08)', width=1, shape='spline')))
+        fig.add_trace(go.Scatter(
+            x=df['x'], y=df['y'], mode='lines',
+            line=dict(color='rgba(255,255,255,0.1)', width=1)
+        ))
     
     # Estrellas
     fig.add_trace(go.Scatter(
-        x=df.x, y=df.y, mode='markers',
-        marker=dict(size=22, color=df.color, symbol=df.simb, line=dict(width=1, color='white')),
-        text=df.cat, hoverinfo='text'
+        x=df['x'], y=df['y'], mode='markers',
+        marker=dict(
+            size=22, 
+            color=df['color'].tolist(), 
+            symbol=df['simb'].tolist(),
+            line=dict(width=1, color='white')
+        ),
+        text=df['cat'],
+        hoverinfo='text'
     ))
 
     fig.update_layout(
@@ -99,4 +119,4 @@ if not df.empty:
     )
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 else:
-    st.markdown("<div style='height: 300px; display: flex; align-items: center; justify-content: center; opacity: 0.2; font-style: italic;'>El orbe espera un origen...</div>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; opacity: 0.2; margin-top: 100px;'>El orbe espera tu primera luz...</p>", unsafe_allow_html=True)
